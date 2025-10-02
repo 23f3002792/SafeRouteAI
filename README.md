@@ -33,7 +33,7 @@ Cities are getting crowded, and navigation apps like Google Maps only optimize f
 
 ### 1. High-level Architecture:
 
- ![Alt image diagram](images/image.png)
+ ![Flow diagram](Flowchart.png)
 
 ### 2. Component details & tech choices
 
