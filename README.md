@@ -175,9 +175,6 @@ Cities are getting crowded, and navigation apps like Google Maps only optimize f
 ---
 
 ## ⚙️ Tech Stack
-**Frontend**: React, Mapbox GL, TailwindCSS  
-
-**Backend**: FastAPI, PostgreSQL + PostGIS, Redis  
 
 **AI Models** (Hugging Face):
 - BLIP/CLIP (Image-to-Text)
@@ -190,27 +187,6 @@ Cities are getting crowded, and navigation apps like Google Maps only optimize f
 
 ---
 
-## 🚀 How to Run (MVP Setup)
-1. Clone repository
-   ```bash
-   git clone https://github.com/rishisharma056/SafeRouteAI.git
-   cd SafeRouteAI
-   ```
-2. Setup backend
-   ```bash
-   cd backend
-   pip install -r requirements.txt
-   uvicorn main:app --reload
-   ```
-3. Setup frontend
-   ```bash
-   cd frontend
-   npm install
-   npm run dev
-   ```
-4. Access at: `http://localhost:3000`
-
----
 
 ## 📊 Future Improvements
 
