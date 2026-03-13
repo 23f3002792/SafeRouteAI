@@ -205,7 +205,7 @@ Set `VITE_USE_MOCK=true` in `frontend/.env.development` to develop against mock 
 ## Roadmap
  
 **MVP (current)**
-- Single-city routing (Bengaluru)
+- Single-city routing (Hyderabad)
 - Three route modes: safest / balanced / fastest
 - Safety heatmap overlay
 - User incident reporting
