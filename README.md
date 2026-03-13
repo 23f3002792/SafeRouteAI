@@ -35,171 +35,200 @@ Cities are getting crowded, and navigation apps like Google Maps only optimize f
 
  ![Flow diagram](Flowchart.png)
 
-### 2. Component details & tech choices
-
-**Ingest layer**
-
-- **Purpose**: Periodically pull and normalize external sources.
-
-- **Tools**: Python scripts + Airflow (or Cron for MVP)
-
-- **Sources & formats**
-
-    - Street images: Mapillary or Google Street View API (where allowed)
-
-    - Accident/crime: City open data portals (CSV/JSON)
-
-    - Social: Twitter API filtered by geotags + news RSS
-
-    - Weather: OpenWeatherMap
-
-- **Data lake & storage**
-
-    - **S3-compatible (or local / MinIO for dev)** for raw assets
-
-    - **Postgres + PostGIS** for routes & geo features
-
-    - **Redis** for caching computed safety scores / routes
-
-- **Vision pipeline**
-
-    - **Task**: Image-to-Text + object detection for road conditions & lighting
-
-    - **Hugging Face models**: BLIP2 or VisionEncoderDecoder (image-to-text), CLIP for similarity
-
-    - **Inference**: Host via Hugging Face Inference Endpoints (or self-host with TorchServe for cost control)
-
-    - **Outputs**: `lighting_level`, `crosswalk_present`, `pothole_confidence`, `vehicle_density_estimate`
-
-- **NLP pipeline**
-
-    - **Task**: Classify textual incidents, summarize noise, extract entities + geolocation inference
-
-    - **Hugging Face models**: RoBERTa / DeBERTa for classification, T5 for summarization, zero-shot models for emerging categories
-
-    - **Outputs**: `incident_type`, `severity`, `time`, `location_prob`
-
-- **Geospatial engine**
-
-    - **Task**: Map safety signals onto road segments
-
-    - **Tech**: PostGIS queries, routing via OSRM / GraphHopper
-
-    - **Output**: per-segment safety vector and aggregated `safety_score`
-
-- **Risk Scoring**
-
-    - **Service**: FastAPI microservice that ingests feature vectors and computes safety scores (explainable weights)
-
-    - **Modeling**: Start with weighted heuristic + gradient boosting (XGBoost) trained on historical accident counts; later augment with learned models
-
-    - **Explainability**: Return top contributing factors per segment
-
-- **RL-based routing**
-
-    - **Goal**: Optimize routes for user-defined tradeoff (safety ↔ time)
-
-    - **Framework**: RLlib or Stable-Baselines3 for prototyping
-
-    - **State**: segment safety, distance left, time, weather, user preference
-
-    - **Action**: choose next segment; reward = negative time penalty + safety bonus (customizable)
-
-    - **Fallback**: deterministic multi-criteria shortest-path (Pareto) for MVP
-
-- **Frontend UX**
-
-    - **Stack**: React + Mapbox GL / Leaflet
-
-    - **UX features**:
-
-        - Two toggles: “Safest route” vs “Fastest route” vs a slider between them
-
-        - Map overlays: heatmap of safety, per-segment scores, user-report pins
-
-        - Route comparison UI: side-by-side ETA vs safety delta
-
-        - Lightweight timeline / feed for local alerts (summaries + confidence)
-
-- **Ops & Deployment**
-
-    - **Containerization**: Docker for all services
-
-    - **Orchestration**: Kubernetes (GKE/EKS) for scale; use Docker Compose for dev
-
-    - **CI/CD**: GitHub Actions — build → test → container push → deploy
-
-    - **Monitoring**: Prometheus + Grafana; Sentry for errors
-
-    - **Cost-saving**: Use batch processing for image inference; use Hugging Face hosted endpoints for quick MVP.
-
-### 3. Concrete API endpoints (FastAPI examples)
-
-- `POST /route`
-  Request: `{ start, end, preference: "safety" | "time" | 0..1 tradeoff }`
-  Response: `{ route: [latlon...], eta, safety_score, explanation }`
-
-- `GET /segment/{id}/score`
-  Response: `{ segment_id, safety_score, contributors: [{factor, weight}] }`
-
-- `POST /report` (user-submitted)
-  Body: `{ lat, lon, type, description, image? }` → used for retraining / feedback loop
-
-- GET `/alerts?bbox=...`
-  Real-time summarized alerts in bounding box
-
-### 4. Hugging Face model choices & usage patterns
-
-- **Image-to-Text**: `Salesforce/blip2` or `microsoft/git` — run inference on street images to extract textual cues. Use batching for throughput.
-
-- **CLIP / Vision encoders**: for similarity search (e.g., detect “poor lighting” by comparing to labeled examples).
-
-- **Text classification**: `roberta-large-mnli` for zero-shot incident classification; fine-tune for city-specific labels later.
-
-- **Summarization**: small `t5-base` for condensing long news/incident text.
-
-- **RL**: RLlib (not on HF, but uses HF models for components if needed).
-
-**Inference strategy**: Use Hugging Face Inference Endpoints or Amazon Sagemaker for managed scaling. For cost control, run nightly batch passes on new images and store results in DB; only do on-demand inference for user-submitted images.
-
-### 5. Privacy, safety, and ethics
-
-- Don’t store or expose personal identifiers from tweets/images; strip PII.
-
-- Rate-limit and validate user-uploaded images (avoid real-time CCTV scraping unless permitted).
-
-- Provide clear TOS: “data is for navigation assistance — not surveillance.”
-
-- Offer opt-out for location/history storage.
-
----
-
-## ⚙️ Tech Stack
-
-**AI Models** (Hugging Face):
-- BLIP/CLIP (Image-to-Text)
-
-- RoBERTa/BERT (Text Classification, Summarization)
-  
-- RLlib / Stable-Baselines3 (Reinforcement Learning)
+## Tech Stack
  
-**Data Sources**: OpenStreetMap, Government accident/crime DBs, Twitter API, Weather APIs
-
+| Layer | Technology |
+|---|---|
+| **Backend** | Python 3.11, Flask, SQLAlchemy, Firebase Admin SDK |
+| **Database** | PostgreSQL + PostGIS (road segments, safety scores) |
+| **Auth & Reports** | Firebase Auth + Firestore |
+| **Cache** | Redis (safety score TTL: 30 min) |
+| **Routing engine** | OSRM / GraphHopper |
+| **Frontend** | Vite, Vue.js, JavaScript |
+| **Map rendering** | Mapbox GL JS / Leaflet |
+| **Vision AI** | BLIP2, CLIP (Hugging Face) |
+| **NLP AI** | RoBERTa, T5 (Hugging Face) |
+| **Risk scoring** | XGBoost + PostGIS feature extraction |
+| **RL routing** | Stable-Baselines3 (post-MVP) |
+| **Data pipeline** | Python scripts + Cron (MVP) / Airflow (future) |
+| **Containerisation** | Docker + Docker Compose |
+ 
 ---
-
-
-## 📊 Future Improvements
-
-- User feedback loop → crowdsource safety ratings
-
-- Multi-city support with scalable ingestion pipelines
-
-- Integration with IoT/smart city infrastructure
-
+ 
+## API — Key Endpoints (v1)
+ 
+All endpoints are prefixed `/api/v1/`. Full contract in [`API_Contract_v1.docx`](./API_Contract_v1.docx).
+ 
+### `POST /api/v1/route`
+Generate a safety-optimised route between two coordinates.
+ 
+```json
+// Request
+{
+  "start":   [77.5946, 12.9716],
+  "end":     [77.6101, 12.9352],
+  "mode":    "safest",
+  "profile": "pedestrian"
+}
+ 
+// Response (abbreviated)
+{
+  "route_id":     "rt_a1b2c3d4",
+  "eta_seconds":  840,
+  "safety_score": 0.82,
+  "geometry":     { "type": "LineString", "coordinates": [...] },
+  "segments":     [ { "segment_id": "seg_001", "safety_score": 0.91, "contributors": [...] } ]
+}
+```
+ 
+**Mode values**: `"safest"` · `"balanced"` · `"fastest"`
+ 
+### `GET /api/v1/segment/:segment_id/score`
+Fetch the safety score and contributing factors for a single road segment. Used by the frontend heatmap.
+ 
+### `POST /api/v1/report` *(auth required)*
+Submit a user-reported safety incident (poor lighting, pothole, theft, etc.). Reports feed the NLP retraining pipeline.
+ 
+---
+ 
+## Safety Scoring Model
+ 
+Each road segment receives a score from **0.0** (unsafe) to **1.0** (safest), computed from four weighted factors:
+ 
+| Factor | Weight | Source |
+|---|---|---|
+| Lighting quality | 35% | BLIP2 / CLIP vision inference on street images |
+| Crime index | 30% | City open data crime statistics |
+| Accident history | 25% | Government accident report databases |
+| Weather conditions | 10% | OpenWeatherMap real-time API |
+ 
+Weights are configurable and will be tuned against historical accident ground truth.
+ 
+---
+ 
+## Data Sources
+ 
+- **Road geometry** — OpenStreetMap via Overpass API
+- **Street images** — Mapillary (open) / Google Street View (where permitted)
+- **Accident & crime data** — City open data portals (CSV / JSON)
+- **Social / news** — Twitter API (geotagged) + news RSS feeds
+- **Weather** — OpenWeatherMap API
+ 
+---
+ 
+## Repository Structure
+ 
+```
+SafeRouteAI/
+├── backend/
+│   ├── app/
+│   │   ├── routes/          # Flask route handlers
+│   │   ├── models/          # SQLAlchemy models
+│   │   ├── services/        # Routing, scoring, cache logic
+│   │   └── utils/
+│   ├── migrations/          # Alembic DB migrations
+│   └── requirements.txt
+├── frontend/
+│   ├── src/
+│   │   ├── components/      # Vue components
+│   │   ├── views/           # Page views
+│   │   ├── composables/     # API + map logic
+│   │   └── mock/            # Mock API responses (dev)
+│   └── vite.config.js
+├── ai/
+│   ├── vision/              # BLIP2 / CLIP pipeline
+│   ├── nlp/                 # RoBERTa / T5 pipeline
+│   ├── scoring/             # XGBoost risk model
+│   └── rl/                  # Stable-Baselines3 router (post-MVP)
+├── data/
+│   ├── ingest/              # Data ingestion scripts
+│   └── schemas/             # PostGIS schema definitions
+├── docker-compose.yml
+├── API_Contract_v1.docx
+└── README.md
+```
+ 
+---
+ 
+## Getting Started
+ 
+### Prerequisites
+- Docker & Docker Compose
+- Node.js 18+
+- Python 3.11+
+- A Firebase project with Auth and Firestore enabled
+ 
+### Environment setup
+ 
+Copy `.env.example` to `.env` in the `backend/` directory and fill in:
+ 
+```env
+FLASK_ENV=development
+DATABASE_URL=postgresql://user:pass@localhost:5432/saferoute
+REDIS_URL=redis://localhost:6379/0
+FIREBASE_SERVICE_ACCOUNT_JSON=/path/to/serviceAccountKey.json
+OSRM_BASE_URL=http://localhost:5000
+CITY_BBOX=77.4601,12.8340,77.7782,13.1439
+```
+ 
+### Run with Docker Compose
+ 
+```bash
+docker-compose up --build
+```
+ 
+This starts: Flask API · PostgreSQL + PostGIS · Redis · OSRM
+ 
+### Frontend dev server
+ 
+```bash
+cd frontend
+npm install
+npm run dev
+```
+ 
+Set `VITE_USE_MOCK=true` in `frontend/.env.development` to develop against mock API responses without a running backend.
+ 
+---
+ 
+## Team & Roles
+ 
+| Role | Responsibilities |
+|---|---|
+| **Technical Lead / System Architect** | Architecture, AI/algorithm logic, OSRM integration, code review, repo ownership |
+| **Backend Developer** | Flask API, SQLAlchemy models, Firebase integration, Redis caching |
+| **Frontend Developer** | Vite + Vue.js UI, Mapbox/Leaflet map, route display, incident reporter |
+| **Data / AI Engineer** | Vision pipeline (BLIP2/CLIP), NLP pipeline (RoBERTa/T5), XGBoost scoring model, data ingestion |
+ 
+---
+ 
+## Roadmap
+ 
+**MVP (current)**
+- Single-city routing (Bengaluru)
+- Three route modes: safest / balanced / fastest
+- Safety heatmap overlay
+- User incident reporting
+ 
+**Post-MVP**
+- RL-based dynamic routing (Stable-Baselines3)
+- Multi-city support with scalable ingestion
+- Bulk segment score endpoint for heatmap performance
+- Image attachment on incident reports
 - Mobile app with push safety alerts
-
+- IoT / smart city data integration
+ 
 ---
-
-## 📄 License
-
-Apache License 2.0
+ 
+## Privacy & Ethics
+ 
+- No personal identifiers are stored from social media or street images — PII is stripped at ingest.
+- User location history is not persisted beyond the active session.
+- Incident reports are used solely for safety analysis, not surveillance.
+- Users can opt out of location history storage in account settings.
+ 
+---
+ 
+## License
+ 
+Apache License 2.0 — see [LICENSE](./LICENSE).
