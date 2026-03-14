@@ -1,0 +1,101 @@
+@import url('https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 222 47% 4%;
+    --foreground: 210 40% 98%;
+
+    --card: 222 47% 7%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222 47% 7%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 217 91% 60%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 217 19% 14%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217 19% 14%;
+    --muted-foreground: 215 20% 55%;
+
+    --accent: 142 70% 45%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217 19% 27%;
+    --input: 217 19% 12%;
+    --ring: 217 91% 60%;
+
+    --radius: 8px;
+
+    --sidebar-background: 222 47% 4%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 210 40% 98%;
+    --sidebar-accent: 217 19% 14%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 217 19% 27%;
+    --sidebar-ring: 217 91% 60%;
+
+    --primary-glow: 217 91% 60%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+    font-family: 'Public Sans', sans-serif;
+  }
+}
+
+/* Leaflet map dark theme */
+.leaflet-tile-pane {
+  filter: grayscale(100%) invert(100%) contrast(90%) hue-rotate(180deg) brightness(0.8);
+}
+
+.leaflet-container {
+  background: hsl(222 47% 4%);
+}
+
+/* Custom location pulse */
+@keyframes location-pulse {
+  0% {
+    box-shadow: 0 0 0 0 hsla(217, 91%, 60%, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 16px hsla(217, 91%, 60%, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 hsla(217, 91%, 60%, 0);
+  }
+}
+
+.location-dot {
+  width: 14px;
+  height: 14px;
+  background: hsl(217 91% 60%);
+  border: 2px solid hsl(210 40% 98%);
+  border-radius: 50%;
+  animation: location-pulse 2s infinite;
+}
+
+/* Hide default leaflet controls styling overrides */
+.leaflet-control-zoom a {
+  background: hsl(222 47% 7%) !important;
+  color: hsl(210 40% 98%) !important;
+  border-color: hsl(217 19% 27%) !important;
+}
+
+.leaflet-control-zoom a:hover {
+  background: hsl(217 19% 14%) !important;
+}
