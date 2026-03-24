@@ -10,15 +10,21 @@ MVP behaviour (KDTree / coordinate-based):
   pair always produces a score; there is no "segment not found" case at
   this stage.  lat and lon are therefore REQUIRED query parameters.
 
+  Coordinates are validated against the Hyderabad dataset bbox
+  (17.2–17.6 N, 78.2–78.7 E).  Points outside this range would silently
+  hit an unrelated KDTree neighbour, so they are rejected with 400
+  OUT_OF_BOUNDS.
+
   When we migrate to PostGIS, segment_id will map to a DB row and lat/lon
   will become optional (derived from the geometry).  The 404
   SEGMENT_NOT_FOUND error code is reserved for that future path.
 
 Flow:
   1. Validate lat and lon query parameters → 400 on missing/invalid.
-  2. Check Redis cache (30-min TTL) keyed by segment_id → return on hit.
-  3. Cache miss → call AI scorer with (segment_id, lat, lon).
-  4. Write result back to Redis and return.
+  2. Bbox check against Hyderabad dataset region → 400 OUT_OF_BOUNDS.
+  3. Check Redis cache (30-min TTL) keyed by segment_id → return on hit.
+  4. Cache miss → call AI scorer with (segment_id, lat, lon).
+  5. Write result back to Redis and return.
 
 Response (API contract §3):
     {
@@ -36,6 +42,7 @@ Response (API contract §3):
 
 Error codes:
     400  VALIDATION_ERROR  lat or lon missing / non-numeric
+    400  OUT_OF_BOUNDS     coordinates outside Hyderabad dataset region
     503  DB_UNAVAILABLE    Redis unreachable
 
 Future (PostGIS):
@@ -45,6 +52,7 @@ from datetime import datetime, timezone
 from flask import Blueprint, request, jsonify
 
 from app.utils.errors import error_response
+from app.utils.validators import validate_segment_coords
 from app.services.cache import get_cached_score, set_cached_score
 from app.services.scoring import score_segment
 
@@ -60,7 +68,7 @@ def get_segment_score(segment_id: str):
 
     # ── 1. Validate lat/lon query params ──────────────────────────────────
     # KDTree scoring is coordinate-based, so lat and lon are required.
-    # Example: GET /api/v1/segment/seg_001/score?lat=12.9716&lon=77.5946
+    # Example: GET /api/v1/segment/seg_001/score?lat=17.385&lon=78.4867
     raw_lat = request.args.get("lat")
     raw_lon = request.args.get("lon")
 
@@ -78,7 +86,14 @@ def get_segment_score(segment_id: str):
             "'lat' and 'lon' must be numeric",
         )
 
-    # ── 2. Cache hit ──────────────────────────────────────────────────────
+    # ── 2. Bbox check — Hyderabad dataset region ──────────────────────────
+    # Rejects coords outside the area the KDTree was trained on, preventing
+    # silent nearest-neighbour scores for completely unrelated locations.
+    bbox_err = validate_segment_coords(lat, lon)
+    if bbox_err:
+        return error_response(400, "OUT_OF_BOUNDS", bbox_err)
+
+    # ── 3. Cache hit ──────────────────────────────────────────────────────
     try:
         cached = get_cached_score(segment_id)
     except Exception:
@@ -87,7 +102,7 @@ def get_segment_score(segment_id: str):
     if cached:
         return jsonify(cached), 200
 
-    # ── 3. Cache miss → score via AI layer ────────────────────────────────
+    # ── 4. Cache miss → score via AI layer ────────────────────────────────
     # The scorer uses (lat, lon) as the KDTree query point and always
     # returns the nearest-neighbour score — no LookupError is possible.
     try:
@@ -95,7 +110,7 @@ def get_segment_score(segment_id: str):
     except Exception as exc:
         return error_response(503, "DB_UNAVAILABLE", str(exc))
 
-    # ── 4. Build response payload ─────────────────────────────────────────
+    # ── 5. Build response payload ─────────────────────────────────────────
     response = {
         "segment_id":   segment_id,
         "osm_way_id":   scored.get("osm_way_id"),    # None until PostGIS is wired
@@ -104,7 +119,7 @@ def get_segment_score(segment_id: str):
         "last_updated": _utcnow_iso(),
     }
 
-    # ── 5. Backfill cache (non-fatal) ─────────────────────────────────────
+    # ── 6. Backfill cache (non-fatal) ─────────────────────────────────────
     try:
         set_cached_score(segment_id, response)
     except Exception:
