@@ -37,7 +37,7 @@ from flask import Blueprint, request, jsonify
 from app.utils.errors import error_response
 from app.utils.validators import (
     validate_coordinate,
-    within_bbox,
+    within_city_bbox,
     VALID_MODES,
     VALID_PROFILES,
 )
@@ -129,7 +129,7 @@ def generate_route():
 
     # ── Bounding-box check ────────────────────────────────────────────────
     for name in ("start", "end"):
-        if not within_bbox(data[name]):
+        if not within_city_bbox(data[name]):
             return error_response(
                 400, "OUT_OF_BOUNDS",
                 f"{name} coordinates are outside the supported city boundary",
