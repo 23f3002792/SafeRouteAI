@@ -173,8 +173,8 @@ Incident type enum: `poor_lighting` · `pothole` · `unsafe_crossing` · `theft`
 `app/services/scoring.py` imports the AI engineer's modules at startup:
 
 ```python
-from ai_model.core.feature_extractor import FeatureOrchestrator
-from ai_model.core.scorer import get_scorer
+from core.feature_extractor import FeatureOrchestrator
+from core.scorer import get_scorer
 ```
 
 Both `FeatureOrchestrator` and the scorer are singletons — they are
