@@ -85,7 +85,7 @@ gunicorn "run:app" --workers 4 --bind 0.0.0.0:8000
 
 ```json
 // Request
-{ "start": [77.5946, 12.9716], "end": [77.6101, 12.9352],
+{ "start": [78.2000, 17.2000], "end": [78.7000, 17.6000],
   "mode": "safest", "profile": "pedestrian" }
 
 // Response 200
