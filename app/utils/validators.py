@@ -92,7 +92,7 @@ def validate_segment_coords(lat: float, lon: float) -> str | None:
     return None
 
 
-def validate_iso8601_not_future(value: str) -> str | None:
+def validate_iso8601(value: str) -> str | None:
     """
     Return an error string if *value* is not a valid ISO 8601 UTC string,
     or if it represents a time in the future.
