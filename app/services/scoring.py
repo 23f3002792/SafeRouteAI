@@ -5,8 +5,8 @@ Imports the AI engineer's modules once at startup and exposes a single
 `score_segment` function used by both the internal POST /score endpoint
 and the route generation service.
 """
-from ai_model.core.feature_extractor import FeatureOrchestrator
-from ai_model.core.scorer import get_scorer
+from core.feature_extractor import FeatureOrchestrator
+from core.scorer import get_scorer
 
 # Initialised once at import time (app startup)
 _orchestrator = FeatureOrchestrator()
