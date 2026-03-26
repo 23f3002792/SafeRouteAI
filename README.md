@@ -85,7 +85,7 @@ gunicorn "run:app" --workers 4 --bind 0.0.0.0:8000
 
 ```json
 // Request
-{ "start": [77.5946, 12.9716], "end": [77.6101, 12.9352],
+{ "start": [78.2000, 17.2000], "end": [78.7000, 17.6000],
   "mode": "safest", "profile": "pedestrian" }
 
 // Response 200
@@ -173,8 +173,8 @@ Incident type enum: `poor_lighting` · `pothole` · `unsafe_crossing` · `theft`
 `app/services/scoring.py` imports the AI engineer's modules at startup:
 
 ```python
-from ai_model.core.feature_extractor import FeatureOrchestrator
-from ai_model.core.scorer import get_scorer
+from core.feature_extractor import FeatureOrchestrator
+from core.scorer import get_scorer
 ```
 
 Both `FeatureOrchestrator` and the scorer are singletons — they are
