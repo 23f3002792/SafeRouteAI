@@ -4,6 +4,7 @@ Reusable validation helpers.
 All functions return either None (valid) or a plain string error message
 that callers can pass straight to error_response().
 """
+
 import os
 from datetime import datetime, timezone
 from typing import Any
@@ -24,6 +25,7 @@ VALID_INCIDENT_TYPES = {
 }
 
 # ── Bounding boxes ─────────────────────────────────────────────────────────────
+
 
 # Route endpoint bbox: read from CITY_BBOX env var (min_lon,min_lat,max_lon,max_lat).
 # Defaults to Bengaluru — used by POST /api/v1/route.
@@ -46,6 +48,7 @@ _HYDERABAD_BBOX = {
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
+
 
 def validate_coordinate(value: Any, field_name: str) -> str | None:
     """
@@ -92,7 +95,7 @@ def validate_segment_coords(lat: float, lon: float) -> str | None:
     return None
 
 
-def validate_iso8601_not_future(value: str) -> str | None:
+def validate_iso8601(value: str) -> str | None:
     """
     Return an error string if *value* is not a valid ISO 8601 UTC string,
     or if it represents a time in the future.

@@ -23,9 +23,9 @@ def create_app():
     init_extensions(app)
 
     # ── Blueprints ────────────────────────────────────────────────────────────
-    app.register_blueprint(route_bp,   url_prefix="/api/v1")
+    app.register_blueprint(route_bp, url_prefix="/api/v1")
     app.register_blueprint(segment_bp, url_prefix="/api/v1")
-    app.register_blueprint(report_bp,  url_prefix="/api/v1")
-    app.register_blueprint(score_bp,   url_prefix="")          # internal: POST /score
+    app.register_blueprint(report_bp, url_prefix="/api/v1")
+    app.register_blueprint(score_bp, url_prefix="")  # internal: POST /score
 
     return app

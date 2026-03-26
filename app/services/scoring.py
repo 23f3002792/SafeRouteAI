@@ -5,8 +5,14 @@ Imports the AI engineer's modules once at startup and exposes a single
 `score_segment` function used by both the internal POST /score endpoint
 and the route generation service.
 """
-from ai_model.core.feature_extractor import FeatureOrchestrator
-from ai_model.core.scorer import get_scorer
+
+import os
+import sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../ai/scoring"))
+
+from core.feature_extractor import FeatureOrchestrator
+from core.scorer import get_scorer
 
 # Initialised once at import time (app startup)
 _orchestrator = FeatureOrchestrator()
@@ -27,8 +33,8 @@ def score_segment(segment_id: str, lat: float, lon: float) -> dict:
         segment_id=segment_id,
         lat=lat,
         lon=lon,
-        image_urls=[],   # Vision stub – ignored for MVP
-        raw_texts=[],    # NLP stub  – ignored for MVP
+        image_urls=[],  # Vision stub – ignored for MVP
+        raw_texts=[],  # NLP stub  – ignored for MVP
     )
     result = _scorer.score(features)
     return result.to_dict()
