@@ -6,11 +6,6 @@ Imports the AI engineer's modules once at startup and exposes a single
 and the route generation service.
 """
 
-import os
-import sys
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../ai/scoring"))
-
 from core.feature_extractor import FeatureOrchestrator
 from core.scorer import get_scorer
 

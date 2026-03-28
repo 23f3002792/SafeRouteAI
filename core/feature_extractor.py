@@ -14,18 +14,62 @@ logger = logging.getLogger(__name__)
 # ============================================================
 
 
-class AccidentFeatureExtractor:
-    def __init__(self, data_path: str = "data/hyderabad_accident_idx_synthetic.csv"):
-        self._df = pd.read_csv(data_path)
-        self._tree = KDTree(self._df[["lat", "lon"]].values)
+FEATURE_COLS = [
+    "accident_idx",
+    "lighting",
+    "road_quality",
+    "incident_score",
+    "crosswalk_present",
+]
 
-    def extract(self, lat: float, lon: float) -> float:
+
+@dataclass
+class SpatialFeatures:
+    """All 5 spatially-varying features from KDTree lookup."""
+
+    accident_idx: float
+    lighting: float
+    road_quality: float
+    incident_score: float
+    crosswalk_present: float
+
+
+class AccidentFeatureExtractor:
+    """
+    KDTree lookup returning ALL 5 spatial features at once.
+    Replaces the old single-value extractor.
+    """
+
+    def __init__(self, data_path: str = "hyderabad_accident_idx_synthetic.csv"):
+        df = pd.read_csv(data_path)
+        # Validate all required columns exist
+        missing = [c for c in FEATURE_COLS if c not in df.columns]
+        if missing:
+            raise ValueError(
+                f"CSV missing columns: {missing}. Regenerate using generate_zones_6d.py"
+            )
+        self._df = df
+        self._tree = KDTree(df[["lat", "lon"]].values)
+        logger.info(f"KDTree loaded: {len(df)} points, {len(FEATURE_COLS)} features")
+
+    def extract(self, lat: float, lon: float, k: int = 3) -> SpatialFeatures:
+        """
+        k-nearest neighbour lookup, averaged across k neighbours.
+        Returns SpatialFeatures with all values in [0, 1].
+        """
         try:
-            _, idx = self._tree.query([lat, lon], k=3)
-            return float(self._df.iloc[idx]["accident_idx"].mean())
+            _, idxs = self._tree.query([lat, lon], k=k)
+            neighbours = self._df.iloc[idxs]
+            return SpatialFeatures(
+                accident_idx=float(neighbours["accident_idx"].mean()),
+                lighting=float(neighbours["lighting"].mean()),
+                road_quality=float(neighbours["road_quality"].mean()),
+                incident_score=float(neighbours["incident_score"].mean()),
+                crosswalk_present=float(neighbours["crosswalk_present"].mean()),
+            )
         except Exception as e:
-            logger.error(f"Accident lookup failed: {e}")
-            return 0.5
+            logger.error(f"KDTree lookup failed for ({lat},{lon}): {e}")
+            return SpatialFeatures(0.5, 0.5, 0.5, 0.8, 0.0)
 
 
 # ============================================================
@@ -156,28 +200,30 @@ class FeatureOrchestrator:
         self._weather = WeatherFeatureExtractor()
 
     def build(
-        self,
+        orchestrator_self,
         segment_id: str,
         lat: float,
         lon: float,
-        image_urls: Optional[List[str]] = None,
-        raw_texts: Optional[List[Dict]] = None,
+        image_urls: Optional[list] = None,
+        raw_texts: Optional[list] = None,
         computed_at: Optional[str] = None,
     ):
-        from scorer import SegmentFeatures  # avoid circular import
+        """
+        Drop-in replacement for FeatureOrchestrator.build().
+        Now reads all 5 spatial features from KDTree instead of just accident_idx.
+        """
+        from core.scorer import SegmentFeatures
 
-        image_urls = image_urls or []
-        raw_texts = raw_texts or []
-
-        vision = self._vision.extract(image_urls)
+        spatial = orchestrator_self._accident.extract(lat, lon)
+        weather = orchestrator_self._weather.extract(lat, lon)
 
         return SegmentFeatures(
             segment_id=segment_id,
-            accident_idx=self._accident.extract(lat, lon),
-            lighting=vision.lighting,
-            crosswalk_present=vision.crosswalk_present,
-            road_quality=vision.road_quality,
-            incident_score=self._nlp.extract(raw_texts),
-            weather_risk=self._weather.extract(lat, lon),
+            accident_idx=spatial.accident_idx,
+            lighting=spatial.lighting,
+            road_quality=spatial.road_quality,
+            incident_score=spatial.incident_score,
+            crosswalk_present=spatial.crosswalk_present,
+            weather_risk=weather,
             computed_at=computed_at,
         )

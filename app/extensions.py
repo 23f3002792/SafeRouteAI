@@ -20,3 +20,6 @@ def init_extensions(app):
     if sa_path and not firebase_admin._apps:
         cred = credentials.Certificate(sa_path)
         firebase_admin.initialize_app(cred)
+        print("Firebase initialized")
+    else:
+        print("Firebase disabled (no valid service account)")

@@ -48,6 +48,7 @@ Error codes:
 Future (PostGIS):
     404  SEGMENT_NOT_FOUND  segment_id not found in database
 """
+
 from datetime import datetime, timezone
 from flask import Blueprint, request, jsonify
 
@@ -74,7 +75,8 @@ def get_segment_score(segment_id: str):
 
     if raw_lat is None or raw_lon is None:
         return error_response(
-            400, "VALIDATION_ERROR",
+            400,
+            "VALIDATION_ERROR",
             "Query parameters 'lat' and 'lon' are required",
         )
     try:
@@ -82,7 +84,8 @@ def get_segment_score(segment_id: str):
         lon = float(raw_lon)
     except ValueError:
         return error_response(
-            400, "VALIDATION_ERROR",
+            400,
+            "VALIDATION_ERROR",
             "'lat' and 'lon' must be numeric",
         )
 
@@ -112,8 +115,8 @@ def get_segment_score(segment_id: str):
 
     # ── 5. Build response payload ─────────────────────────────────────────
     response = {
-        "segment_id":   segment_id,
-        "osm_way_id":   scored.get("osm_way_id"),    # None until PostGIS is wired
+        "segment_id": segment_id,
+        "osm_way_id": scored.get("osm_way_id"),  # None until PostGIS is wired
         "safety_score": scored["safety_score"],
         "contributors": scored.get("contributors", []),
         "last_updated": _utcnow_iso(),
