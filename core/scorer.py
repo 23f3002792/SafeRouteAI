@@ -120,6 +120,35 @@ class HeuristicScorer:
             last_updated=features.computed_at,
         )
 
+    def score_waypoint(self, lon: float, lat: float):
+        """
+        Convert (lon, lat) → features → score.
+        Acts as bridge between router and scoring system.
+        """
+
+        # Lazy import to avoid circular dependency
+        from core.feature_extractor import FeatureOrchestrator
+
+        if not hasattr(self, "_orchestrator"):
+            self._orchestrator = FeatureOrchestrator()
+
+        features = self._orchestrator.build(
+            segment_id="dynamic",
+            lat=lat,
+            lon=lon,
+        )
+
+        scored = self.score(features)
+
+        return scored.safety_score, [
+            {
+                "factor": c.factor,
+                "weight": c.weight,
+                "value": c.value,
+            }
+            for c in scored.contributors
+        ]
+
 
 # ============================================================
 # 5. OPTIONAL XGBOOST (FUTURE UPGRADE)
